@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Pytest
+    name: Release package to mypi
     defaults:
       run:
         working-directory: .
@@ -37,7 +37,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
-        password: ${{ secrets.PYPI_DEPLOY_TOKEN }}
+        password: ${{ secrets.PYPI_TEST_DEPLOY_TOKEN }}
         verbose: true
         print_hash: true
         repository_url: https://test.pypi.org/legacy/
