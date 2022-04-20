@@ -1,0 +1,42 @@
+name: pytests
+
+on: [release]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Pytest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install clang llvm libelf-dev libpcap-dev gcc-multilib build-essential linux-libc-dev
+        sudo mkdir dist
+    - name: Build libbpf
+      run: |
+        cd dependencies/libbpf/src/
+        make
+        cd ../../../
+    - name: Install requirements
+      run: | 
+        sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements.txt
+        sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements-dev.txt
+        sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install --upgrade build
+    - name: Run tests and collect coverage
+      run: sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m build
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_DEPLOY_TOKEN }}
+        verbose: true
+        print_hash: true
