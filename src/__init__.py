@@ -108,14 +108,20 @@ class BPF_Object():
     pass
 
 class BPF_Map():
-    def __init__(self, map_type, map_name, key_size, value_size, max_entries, map_flags, pinning=False):
+    def __init__(self, map_type: int, map_name: str | bytes, key_size: int, value_size: int, max_entries: int, map_flags: int, pinning: bool=False, fd: int=None):
+        assert isinstance(map_type, int) and 0 < map_type < 30, f"Map Type unknown {map_type}"
         self.map_type = map_type
+        assert isinstance(map_name, str | bytes) and len(map_name) < 16
+        if isinstance(map_name, str):
+            map_name = map_name.encode()
         self.map_name = map_name
+        assert isinstance(key_size, int) and 0 < key_size < 2 **32
         self.key_size = key_size
+        assert isinstance(value_size, int) and 0 < value_size < 2 **32
         self.value_size = value_size
+        assert isinstance(max_entries, int) and 0 < max_entries < 2 **32
         self.max_entries = max_entries
         self.map_flags = map_flags
-        # maye this is the wrong function to call
         """
         struct bpf_map_create_opts {
             size_t sz; /* size of this struct for forward/backward compatibility */
@@ -141,14 +147,17 @@ class BPF_Map():
                           __u32 max_entries,
 			      const struct bpf_map_create_opts *opts);
         """
-        self.__map_fd = libbpf_so.bpf_map_create(ctypes.c_int(self.map_type), 
-                                         self.map_name,
-                                         ctypes.c_int(self.key_size), 
-                                         ctypes.c_int(self.value_size), 
-                                         ctypes.c_int(self.max_entries), 
-                                         ctypes.c_int(self.map_flags)
-                                        )
-        print(self.__map_fd)
+        if fd:
+            assert isinstance(fd, int)
+            self.__map_fd = fd
+        else:
+            self.__map_fd = libbpf_so.bpf_map_create(ctypes.c_int(self.map_type),
+                                             self.map_name,
+                                             ctypes.c_int(self.key_size),
+                                             ctypes.c_int(self.value_size),
+                                             ctypes.c_int(self.max_entries),
+                                             ctypes.c_int(self.map_flags)
+                                            )
         assert self.__map_fd > 0, f"Failed to create map, {self.__map_fd}"
         self.__pinned_path = None
         if pinning:
@@ -192,7 +201,7 @@ class BPF_Map():
         assert err == 0, f"Failed to update map, {err}"
 
     @classmethod
-    def get_map_by_fd(cls, map_fd: int) -> 'BPF_Map':
+    def get_map_by_fd(cls, map_fd: int, pinning=False) -> 'BPF_Map':
         assert map_fd > 0, f"Invalid map fd {map_fd}"
         # Map info can be retrieved using bpf_obj_get_info_by_fd(fd, info, info_len);
         bpf_map_info = Bpf_map_info()
@@ -208,7 +217,7 @@ class BPF_Map():
         max_entries = bpf_map_info.max_entries
         map_flags = 0
         # print(map_type, map_name, key_size, value_size, max_entries, map_flags)
-        return cls(map_type, map_name, key_size, value_size, max_entries, map_flags, pinning=False)
+        return cls(map_type, map_name, key_size, value_size, max_entries, map_flags, pinning=pinning, fd=map_fd)
 
     @classmethod
     def get_map_by_name(cls, name: str) -> 'BPF_Map':
@@ -227,8 +236,3 @@ class BPF_Map():
             self.__pinned_path = None
             return err
 
-
-if __name__ == "__main__":
-    mymap = BPF_Map(MapTypes.BPF_MAP_TYPE_ARRAY, b"mymap", 4, 4, 10, 0)
-    print(mymap)
-    pass
