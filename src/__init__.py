@@ -211,6 +211,12 @@ class BPF_Map():
                                      )
         assert err == 0, f"Failed to update map, {err}"
 
+    def __len__(self):
+        return self.max_entries
+
+    def __iter__(self):
+        return Bpf_map_iterator(self)
+
     @classmethod
     def get_map_by_fd(cls, map_fd: int, pinning=False) -> 'BPF_Map':
         assert map_fd > 0, f"Invalid map fd {map_fd}"
@@ -246,4 +252,23 @@ class BPF_Map():
             err = libbpf_so.bpf_map__unpin(ctypes.c_int(0))
             self.__pinned_path = None
             return err
+
+
+class Bpf_map_iterator:
+    def __init__(self, map: BPF_Map):
+        self.__map = map
+        self.__index = 0
+        if map.map_type !=  MapTypes.BPF_MAP_TYPE_ARRAY:
+            raise Exception("Only array maps are supported")
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.__index >= len(self.__map):
+            raise StopIteration
+        else:
+            result = self.__map[self.__index]
+            self.__index += 1
+            return result
 
