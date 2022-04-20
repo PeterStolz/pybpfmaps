@@ -1,6 +1,6 @@
-name: pytests
+name: Release package
 
-on: [release]
+on: [push]
 
 jobs:
   build:
