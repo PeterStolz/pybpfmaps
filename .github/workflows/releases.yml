@@ -31,7 +31,7 @@ jobs:
         sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements.txt
         sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements-dev.txt
         sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install --upgrade build
-    - name: Run tests and collect coverage
+    - name: Build package
       run: sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m build
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@release/v1
