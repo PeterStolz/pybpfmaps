@@ -1,0 +1,3 @@
+[submodule "dependencies/libbpf"]
+	path = dependencies/libbpf
+	url = git@github.com:libbpf/libbpf.git

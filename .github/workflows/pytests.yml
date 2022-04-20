@@ -1,0 +1,35 @@
+name: pytests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Pytest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install clang llvm libelf-dev libpcap-dev gcc-multilib build-essential linux-libc-dev
+    - name: Build libbpf
+      run: |
+        cd dependencies/libbpf/src/
+        make
+        cd ../../../
+    - name: Install requirements
+      run: | 
+        sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements.txt
+        sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements-dev.txt
+    - name: Run tests and collect coverage
+      run: sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pytest --cov --cov-report xml .
+    - name: Upload coverage reports to Codecov with GitHub Action
+      uses: codecov/codecov-action@v2
