@@ -193,6 +193,8 @@ class BPF_Map():
                                          )
             assert err == 0, f"Failed to lookup map elem {key}, {err}"
             result = value.value
+            if result is None:
+                result = 0
         return result
 
 

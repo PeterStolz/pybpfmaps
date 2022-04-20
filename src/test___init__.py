@@ -49,7 +49,14 @@ def test_for_in(rand_name):
     mymap[3] = 4
     for i, v in enumerate(mymap):
         assert v == mymap[i], f"Map value is not {mymap[i]} but {v}"
+    assert list(iter(mymap)) == list(mymap), f"Map values are not {list(mymap)} but {list(iter(mymap))}"
+    assert list(iter(mymap)) == [1, 2, 3, 4, 0, 0, 0, 0, 0, 0], f"Map values are not [1, 2, 3, 4, 0, 0, 0, 0, 0, 0] but {list(iter(mymap))}"
 
+def test_zero_is_not_none(rand_name):
+    mymap = BPF_Map(MapTypes.BPF_MAP_TYPE_ARRAY, rand_name, 4, 4, 10, 0)
+    assert mymap[0] == 0, f"Map value is not 0 but {mymap[0]}"
+    mymap[0] = 0
+    assert mymap[0] == 0, f"Map value is not 0 but {mymap[0]}"
 
 def test_unpin_succeeds(rand_name):
     mymap = BPF_Map(MapTypes.BPF_MAP_TYPE_ARRAY, rand_name, 4, 4, 10, 0, pinning=True)
