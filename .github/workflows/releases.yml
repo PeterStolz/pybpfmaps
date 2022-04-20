@@ -40,3 +40,4 @@ jobs:
         password: ${{ secrets.PYPI_DEPLOY_TOKEN }}
         verbose: true
         print_hash: true
+        repository_url: https://test.pypi.org/legacy/
