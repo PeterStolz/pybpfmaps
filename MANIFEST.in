@@ -1,1 +1,2 @@
 include dependencies/libbpf/src/libbpf.so
+exclude test_*
