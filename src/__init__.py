@@ -7,6 +7,8 @@ from enum import IntEnum
 
 libbpf_so = ctypes.CDLL("./dependencies/libbpf/src/libbpf.so.0")
 
+BPF_OBJ_NAME_LEN = 16
+
 class Bpf_prog_info(ctypes.Structure):
     # info struct def https://github.com/torvalds/linux/blob/b4a5ea09b29371c2e6a10783faa3593428404343/tools/include/uapi/linux/bpf.h#L5880
     _fields_ = [
@@ -21,7 +23,7 @@ class Bpf_prog_info(ctypes.Structure):
         ("created_by_uid", 	ctypes.c_uint32),
         ("nr_map_ids", 	ctypes.c_uint32),
         ("map_ids", 	ctypes.c_uint64),
-        ("name", 	ctypes.c_char * 16),
+        ("name", 	ctypes.c_char * BPF_OBJ_NAME_LEN),
         ("ifindex", 	ctypes.c_uint32),
         ("gpl_compatible:1", 	ctypes.c_uint32),
         ("padding", 	ctypes.c_uint32),
@@ -58,7 +60,7 @@ class Bpf_map_info(ctypes.Structure):
         ("value_size", 	ctypes.c_uint32),
         ("max_entries", 	ctypes.c_uint32),
         ("map_flags", 	ctypes.c_uint32),
-        ("name", 	ctypes.c_char * 16),
+        ("name", 	ctypes.c_char * BPF_OBJ_NAME_LEN),
         ("ifindex", 	ctypes.c_uint32),
         ("btf_vmlinux_value_type_id", 	ctypes.c_uint32),
         ("netns_dev", 	ctypes.c_uint64),
@@ -111,7 +113,9 @@ class BPF_Map():
     def __init__(self, map_type: int, map_name: str | bytes, key_size: int, value_size: int, max_entries: int, map_flags: int, pinning: bool=False, fd: int=None):
         assert isinstance(map_type, int) and 0 < map_type < 30, f"Map Type unknown {map_type}"
         self.map_type = map_type
-        assert isinstance(map_name, str | bytes) and len(map_name) < 16
+        # We constrain the length of the map_name here because the bpf_map_info struct only provides BPF_OBJ_NAME_LEN chars
+        # Therefore it is not possible to retrieve a map with a longer name with the current implementation
+        assert isinstance(map_name, str | bytes) and len(map_name) < BPF_OBJ_NAME_LEN
         if isinstance(map_name, str):
             map_name = map_name.encode()
         self.map_name = map_name
@@ -175,14 +179,21 @@ class BPF_Map():
         """
         LIBBPF_API int bpf_map_lookup_elem(int fd, const void *key, void *value);
         """
-        value = ctypes.c_void_p(0)
-        key = ctypes.c_int(key)
-        err = libbpf_so.bpf_map_lookup_elem(ctypes.c_int(self.__map_fd), 
-                                      ctypes.byref(key), 
-                                      ctypes.byref(value)
-                                     )
-        assert err == 0, f"Failed to lookup map elem {key}, {err}"
-        return value.value
+        result = None
+        if isinstance(key, slice):
+            result = []
+            for k in range(key.start, key.stop, key.step or 1):
+                result.append(self[k])
+        else:
+            value = ctypes.c_void_p(0)
+            key = ctypes.c_int(key)
+            err = libbpf_so.bpf_map_lookup_elem(ctypes.c_int(self.__map_fd),
+                                          ctypes.byref(key),
+                                          ctypes.byref(value)
+                                         )
+            assert err == 0, f"Failed to lookup map elem {key}, {err}"
+            result = value.value
+        return result
 
 
     def __setitem__(self, key, value):
