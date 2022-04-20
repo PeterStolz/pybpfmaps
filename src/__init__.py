@@ -72,6 +72,23 @@ class Bpf_map_info(ctypes.Structure):
         ("map_extra", 	ctypes.c_uint64),
     ]
 
+class Bpf_map_struct(ctypes.Structure):
+    '''
+	enum bpf_map_type map_type;
+	__u32 key_size;
+	__u32 value_size;
+	__u32 max_entries;
+	__u32 id;
+    '''
+    _fields_ = [
+        ("map_type", 	ctypes.c_uint32),
+        ("key_size", 	ctypes.c_uint32),
+        ("value_size", 	ctypes.c_uint32),
+        ("max_entries", 	ctypes.c_uint32),
+        ("id", 	ctypes.c_uint32),
+    ]
+
+
 class MapTypes(IntEnum):
     BPF_MAP_TYPE_HASH = 1
     BPF_MAP_TYPE_ARRAY = 2
@@ -165,14 +182,14 @@ class BPF_Map():
         assert self.__map_fd > 0, f"Failed to create map, {self.__map_fd}"
         self.__pinned_path = None
         if pinning:
-            # Pin the map to the filesystem, so we can use it in other programs
-            # This might be achievable with bpf_obj_pin and bpf_obj_get
-            # TODO ensure /sys/fs/bpf is mounted as bpf
-            # int bpf_obj_pin(int fd, const char *pathname);
-            path = b"/sys/fs/bpf/" + self.map_name
-            pin_res = libbpf_so.bpf_obj_pin(ctypes.c_int(self.__map_fd), path)
-            assert pin_res == 0, f"Failed to pin map, {pin_res}"
-            self.__pinned_path = path
+            self.pin(prefix='')
+        # Retrieve map id
+        bpf_map_info = Bpf_map_info()
+        err = libbpf_so.bpf_obj_get_info_by_fd(ctypes.c_int(self.__map_fd),
+                                               ctypes.byref(bpf_map_info),
+                                               ctypes.byref(ctypes.c_int(ctypes.sizeof(bpf_map_info)))
+                                               )
+        self.__id = bpf_map_info.id
 
 
     def __getitem__(self, key):
@@ -246,14 +263,40 @@ class BPF_Map():
         assert mapfd > 0, f"Failed to get map, {mapfd} {name}"
         return cls.get_map_by_fd(mapfd)
 
+    def pin(self, prefix: str | bytes = b''):
+        # Pin the map to the filesystem, so we can use it in other programs
+        # This might be achievable with bpf_obj_pin and bpf_obj_get
+        # TODO ensure /sys/fs/bpf is mounted as bpf
+        # int bpf_obj_pin(int fd, const char *pathname);
+        if not self.__pinned_path:
+            assert isinstance(prefix, str | bytes)
+            if isinstance(prefix, str):
+                prefix = prefix.encode()
+            path = b"/sys/fs/bpf/" + prefix + self.map_name
+            pin_res = libbpf_so.bpf_obj_pin(ctypes.c_int(self.__map_fd), path)
+            assert pin_res == 0, f"Failed to pin map, {pin_res}"
+            self.__pinned_path = path
+
+    @property
+    def id(self):
+        return self.__id
+
     def unpin(self):
         """
         Remove the pinning
         """
+        '''struct bpf_map {
+            enum bpf_map_type map_type;
+            __u32 key_size;
+            __u32 value_size;
+            __u32 max_entries;
+            __u32 id;
+        }
+        LIBBPF_API int bpf_map__unpin(struct bpf_map *map, const char *path);
+        '''
         if self.__pinned_path:
-            err = libbpf_so.bpf_map__unpin(ctypes.c_int(0))
+            os.unlink(self.__pinned_path)
             self.__pinned_path = None
-            return err
 
 
 class Bpf_map_iterator:
