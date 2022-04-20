@@ -5,6 +5,8 @@ import os
 import time
 from enum import IntEnum
 
+
+# TODO: https://docs.python.org/3/library/importlib.html#importlib.resources.as_file import from package
 libbpf_so = ctypes.CDLL("./dependencies/libbpf/src/libbpf.so.0")
 
 BPF_OBJ_NAME_LEN = 16
