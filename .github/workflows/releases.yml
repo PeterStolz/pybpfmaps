@@ -1,6 +1,12 @@
 name: Release package
 
-on: [push]
+on: 
+  workflow_run:
+    workflows: ["pytests"]
+    branches:
+      - 'main'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
 
 jobs:
   build:
@@ -35,13 +41,6 @@ jobs:
         sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install --upgrade build
     - name: Build package
       run: sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m build
-    - name: Publish distribution 📦 to Test PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        password: ${{ secrets.PYPI_TEST_DEPLOY_TOKEN }}
-        verbose: true
-        print_hash: true
-        repository_url: https://test.pypi.org/legacy/
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags') # only push to official pypi if we tag the commit
       uses: pypa/gh-action-pypi-publish@master
