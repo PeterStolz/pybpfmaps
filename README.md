@@ -1,8 +1,11 @@
 # Pybpfmaps
-[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
-[![pytests](https://github.com/PeterStolz/pybpfmaps/actions/workflows/pytests.yml/badge.svg)](https://github.com/PeterStolz/pybpfmaps/actions/workflows/pytests.yml)
-[![codecov](https://codecov.io/gh/PeterStolz/pybpfmaps/branch/main/graph/badge.svg?token=HMYY954POH)](https://codecov.io/gh/PeterStolz/pybpfmaps)
-[![PyPI version](https://badge.fury.io/py/bpfmaps.svg)](https://badge.fury.io/py/bpfmaps)
+<p align="center">
+<a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/python-3.10-blue.svg"></a>
+<a href="https://github.com/PeterStolz/pybpfmaps/actions/workflows/pytests.yml"><img src="https://github.com/PeterStolz/pybpfmaps/actions/workflows/pytests.yml/badge.svg"></a>
+<a href="https://codecov.io/gh/PeterStolz/pybpfmaps"><img src="https://codecov.io/gh/PeterStolz/pybpfmaps/branch/main/graph/badge.svg?token=HMYY954POH"></a>
+<a href="https://pypi.org/project/bpfmaps/"><img src="https://badge.fury.io/py/bpfmaps.svg"></a>
+<a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
 Simple standalone python library to interact with bpf/ebpf maps via libbpf bindings.
 
