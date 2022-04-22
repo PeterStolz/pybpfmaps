@@ -25,6 +25,8 @@ jobs:
         cd dependencies/libbpf/src/
         make
         cd ../../../
+      env:
+        OBJDIR: ../../../src/bpfmaps/libbpf/
     - name: Install requirements
       run: | 
         sudo /opt/hostedtoolcache/Python/3.10.4/x64/bin/python3 -m pip install -r requirements.txt

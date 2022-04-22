@@ -1,2 +1,3 @@
-include dependencies/libbpf/src/libbpf.so
-exclude test_*
+include pyproject.toml
+recursive-include src libbpf.so.0.8.0
+
