@@ -7,7 +7,15 @@ from enum import IntEnum
 
 
 # TODO: https://docs.python.org/3/library/importlib.html#importlib.resources.as_file import from package
-libbpf_so = ctypes.CDLL("./dependencies/libbpf/src/libbpf.so.0")
+# check if system wide libbpf exists
+if os.path.exists('/lib/x86_64-linux-gnu/libbpf.so'):
+    libbpf_so = ctypes.cdll.LoadLibrary('/lib/x86_64-linux-gnu/libbpf.so')
+elif os.path.exists('/usr/lib/x86_64-linux-gnu/libbpf.so'):
+    libbpf_so = ctypes.cdll.LoadLibrary('/usr/lib/x86_64-linux-gnu/libbpf.so')
+elif os.path.exists("./dependencies/libbpf/src/libbpf.so.0"):
+    libbpf_so = ctypes.cdll.LoadLibrary("./dependencies/libbpf/src/libbpf.so.0")
+else:
+    raise Exception('libbpf.so not found')
 
 BPF_OBJ_NAME_LEN = 16
 
