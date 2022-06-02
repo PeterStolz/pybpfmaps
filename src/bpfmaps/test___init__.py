@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import random
 import os
+import ctypes
 
 import pytest
 
@@ -78,6 +79,36 @@ def test_zero_is_not_none(rand_name):
     assert mymap[0] == 0, f"Map value is not 0 but {mymap[0]}"
 
 
+def test_types_in_constructor(rand_name):
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_ARRAY,
+        rand_name,
+        4,
+        4,
+        10,
+        0,
+        value_type=ctypes.c_int,
+        key_type=ctypes.c_int,
+    )
+    mymap[3] = 3
+    assert mymap[3] == 3, f"Map value is not 0 but {mymap[0]}"
+
+
+def test_types_in_constructor_longs(rand_name):
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_ARRAY,
+        rand_name,
+        4,
+        8,
+        10,
+        0,
+        value_type=ctypes.c_long,
+        key_type=ctypes.c_int,
+    )
+    mymap[6] = 2**33
+    assert mymap[6] == 2**33, f"Map value is not 0 but {mymap[0]}"
+
+
 def test_unpin_succeeds(rand_name):
     mymap = BPF_Map(MapTypes.BPF_MAP_TYPE_ARRAY, rand_name, 4, 4, 10, 0, pinning=True)
     assert os.path.exists(b"/sys/fs/bpf/" + rand_name), "Map file does not exist"
@@ -101,3 +132,41 @@ def test_load_pinned_map(rand_name):
     )
     assert map2[0] == 1111, f"Map value is not 1111 but {map2[0]}"
     mymap.unpin()
+
+
+def test_hash_map(rand_name):
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_HASH,
+        rand_name,
+        8,
+        8,
+        10,
+        0,
+        value_type=ctypes.c_long,
+        key_type=ctypes.c_long,
+    )
+    mymap[2**35] = 2**36
+    assert mymap[2**35] == 2**36
+
+
+def test_hash_map_iter(rand_name):
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_HASH,
+        rand_name,
+        8,
+        8,
+        10,
+        0,
+        value_type=ctypes.c_long,
+        key_type=ctypes.c_long,
+    )
+    mymap[2**35] = 2**36
+    mymap[2**36] = 2**37
+    mymap[2**37] = 2**38
+    entries = [e for e in iter(mymap)]
+    assert all(
+        map(
+            lambda e: e in [(2**35, 2**36), (2**36, 2**37), (2**37, 2**38)],
+            entries,
+        )
+    )

@@ -141,6 +141,8 @@ class BPF_Map:
         map_flags: int,
         pinning: bool = False,
         fd: int = None,
+        key_type=None,
+        value_type=None,
     ):
         assert (
             isinstance(map_type, int) and 0 < map_type < 30
@@ -159,6 +161,8 @@ class BPF_Map:
         assert isinstance(max_entries, int) and 0 < max_entries < 2**32
         self.max_entries = max_entries
         self.map_flags = map_flags
+        self.key_type = key_type
+        self.value_type = value_type
         """
         struct bpf_map_create_opts {
             size_t sz; /* size of this struct for forward/backward compatibility */
@@ -209,49 +213,6 @@ class BPF_Map:
         )
         self.__id = bpf_map_info.id
 
-    def __getitem__(self, key):
-        """
-        LIBBPF_API int bpf_map_lookup_elem(int fd, const void *key, void *value);
-        """
-        result = None
-        if isinstance(key, slice):
-            result = []
-            for k in range(key.start, key.stop, key.step or 1):
-                result.append(self[k])
-        else:
-            value = ctypes.c_void_p(0)
-            key = ctypes.c_int(key)
-            err = libbpf_so.bpf_map_lookup_elem(
-                ctypes.c_int(self.__map_fd), ctypes.byref(key), ctypes.byref(value)
-            )
-            assert err == 0, f"Failed to lookup map elem {key}, {err}"
-            result = value.value
-            if result is None:
-                result = 0
-        return result
-
-    def __setitem__(self, key, value):
-        """
-        LIBBPF_API int bpf_map_update_elem(int fd, const void *key, const void *value, __u64 flags);
-        """
-        # there is the option to specify a _as_parameter for custom classes, so they can be used when calling the function
-
-        key = ctypes.c_int(key)
-        value = ctypes.c_int(value)
-        err = libbpf_so.bpf_map_update_elem(
-            ctypes.c_int(self.__map_fd),
-            ctypes.byref(key),
-            ctypes.byref(value),
-            ctypes.c_int(0),
-        )
-        assert err == 0, f"Failed to update map, {err}"
-
-    def __len__(self):
-        return self.max_entries
-
-    def __iter__(self):
-        return Bpf_map_iterator(self)
-
     @classmethod
     def get_map_by_fd(cls, map_fd: int, pinning=False) -> "BPF_Map":
         assert map_fd > 0, f"Invalid map fd {map_fd}"
@@ -289,8 +250,72 @@ class BPF_Map:
         assert mapfd > 0, f"Failed to get map, {mapfd} {name}"
         return cls.get_map_by_fd(mapfd)
 
+    def __getitem__(self, key):
+        """
+        LIBBPF_API int bpf_map_lookup_elem(int fd, const void *key, void *value);
+        """
+        result = None
+        if isinstance(key, slice):
+            result = []
+            for k in range(key.start, key.stop, key.step or 1):
+                result.append(self[k])
+        else:
+            # Assume that if the provided key is not an int is is already a ctypes object
+            if isinstance(key, int):
+                key = ctypes.c_int(key) if self.key_type is None else self.key_type(key)
+            value = ctypes.c_void_p(0) if self.value_type is None else self.value_type()
+            # import pudb; pudb.set_trace()
+            err = libbpf_so.bpf_map_lookup_elem(
+                ctypes.c_int(self.__map_fd), ctypes.byref(key), ctypes.byref(value)
+            )
+            assert err == 0, f"Failed to lookup map elem {key}, {err}"
+            result = value.value
+            if result is None:
+                result = 0
+        return result
+
+    def __setitem__(self, key, value):
+        """
+        LIBBPF_API int bpf_map_update_elem(int fd, const void *key, const void *value, __u64 flags);
+        """
+        # there is the option to specify a _as_parameter for custom classes, so they can be used when calling the function
+
+        if isinstance(key, int):
+            key = ctypes.c_int(key) if self.key_type is None else self.key_type(key)
+        if isinstance(value, int):
+            value = (
+                ctypes.c_int(value)
+                if self.value_type is None
+                else self.value_type(value)
+            )
+        err = libbpf_so.bpf_map_update_elem(
+            ctypes.c_int(self.__map_fd),
+            ctypes.byref(key),
+            ctypes.byref(value),
+            ctypes.c_int(0),
+        )
+        assert err == 0, f"Failed to update map, {err}"
+
+    def __len__(self):
+        """Returns the number of max entries"""
+        return self.max_entries
+
+    def __iter__(self):
+        if self.map_type == MapTypes.BPF_MAP_TYPE_HASH:
+            return Bpf_map_iterator(self)
+        elif self.map_type == MapTypes.BPF_MAP_TYPE_ARRAY:
+            return Bpf_array_iterator(self)
+
+    @property
+    def id(self):
+        return self.__id
+
+    @property
+    def fd(self):
+        return self.__map_fd
+
     def pin(self, prefix: str | bytes = b""):
-        # Pin the map to the filesystem, so we can use it in other programs
+        """Pin the map to the filesystem, so we can use it in other programs"""
         # This might be achievable with bpf_obj_pin and bpf_obj_get
         # TODO ensure /sys/fs/bpf is mounted as bpf
         # int bpf_obj_pin(int fd, const char *pathname);
@@ -302,10 +327,6 @@ class BPF_Map:
             pin_res = libbpf_so.bpf_obj_pin(ctypes.c_int(self.__map_fd), path)
             assert pin_res == 0, f"Failed to pin map, {pin_res}"
             self.__pinned_path = path
-
-    @property
-    def id(self):
-        return self.__id
 
     def unpin(self):
         """
@@ -325,7 +346,7 @@ class BPF_Map:
             self.__pinned_path = None
 
 
-class Bpf_map_iterator:
+class Bpf_array_iterator:
     def __init__(self, map: BPF_Map):
         self.__map = map
         self.__index = 0
@@ -342,3 +363,47 @@ class Bpf_map_iterator:
             result = self.__map[self.__index]
             self.__index += 1
             return result
+
+
+class Bpf_map_iterator:
+    def __init__(self, map: BPF_Map):
+        self.__map = map
+        if map.map_type != MapTypes.BPF_MAP_TYPE_HASH:
+            raise Exception("Only hash maps are supported")
+
+    def __iter__(self):
+        # for the first iter we pass 0
+        self.last_key = (
+            self.__map.key_type(0) if self.__map.key_type else ctypes.c_int(0)
+        )
+        self.first_iteration = True
+        return self
+
+    def __next__(self):
+        # LIBBPF_API int bpf_map_get_next_key(int fd, const void *key, void *next_key);
+        # strace og bpftool map dump
+        # bpf(BPF_MAP_GET_NEXT_KEY, {map_fd=3, key=NULL, next_key=0x55fd70b6c2c0}, 128) = 0
+        # bpf(BPF_MAP_LOOKUP_ELEM, {map_fd=3, key=0x55fd70b6c2c0, value=0x55fd70b6c2e0, flags=BPF_ANY}, 128) = 0
+        # bpf(BPF_MAP_GET_NEXT_KEY, {map_fd=3, key=0x55fd70b6c2c0, next_key=0x55fd70b6c2c0}, 128) = 0
+        # bpf(BPF_MAP_LOOKUP_ELEM, {map_fd=3, key=0x55fd70b6c2c0, value=0x55fd70b6c2e0, flags=BPF_ANY}, 128) = 0
+        if self.first_iteration:
+            self.next_exists = (
+                libbpf_so.bpf_map_get_next_key(
+                    self.__map.fd, 0, ctypes.byref(self.last_key)
+                )
+                == 0
+            )
+            self.first_iteration = False
+        else:
+            self.next_exists = (
+                libbpf_so.bpf_map_get_next_key(
+                    self.__map.fd,
+                    ctypes.byref(self.last_key),
+                    ctypes.byref(self.last_key),
+                )
+                == 0
+            )
+        if not self.next_exists:
+            raise StopIteration
+        value = self.__map[self.last_key]
+        return self.last_key.value, value
