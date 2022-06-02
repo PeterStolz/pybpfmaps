@@ -250,6 +250,12 @@ class BPF_Map:
         assert mapfd > 0, f"Failed to get map, {mapfd} {name}"
         return cls.get_map_by_fd(mapfd)
 
+    @classmethod
+    def get_map_by_id(cls, map_id: int) -> "BPF_Map":
+        mapfd = libbpf_so.bpf_map_get_fd_by_id(map_id)
+        assert mapfd > 0, f"Failed to get map, {mapfd} {id}"
+        return cls.get_map_by_fd(mapfd)
+
     def __getitem__(self, key):
         """
         LIBBPF_API int bpf_map_lookup_elem(int fd, const void *key, void *value);

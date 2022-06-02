@@ -220,3 +220,17 @@ def test_structs_as_key(rand_name):
     mymap[point_key] = point_value
     pointcopy = mymap[point_key]
     assert pointcopy.x == 4 and pointcopy.y == 5 and pointcopy.z == 6
+
+def test_mep_get_by_id(rand_name):
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_ARRAY,
+        rand_name,
+        4,
+        4,
+        10,
+        0,
+        value_type=ctypes.c_int,
+        key_type=ctypes.c_int,
+    )
+    assert BPF_Map.get_map_by_id(mymap.id).map_name == rand_name
+
