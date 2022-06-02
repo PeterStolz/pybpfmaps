@@ -269,7 +269,11 @@ class BPF_Map:
                 ctypes.c_int(self.__map_fd), ctypes.byref(key), ctypes.byref(value)
             )
             assert err == 0, f"Failed to lookup map elem {key}, {err}"
-            result = value.value
+            if isinstance(value, ctypes.Structure):
+                result = value
+            else:
+                result = value.value
+
             if result is None:
                 result = 0
         return result
@@ -370,13 +374,13 @@ class Bpf_map_iterator:
         self.__map = map
         if map.map_type != MapTypes.BPF_MAP_TYPE_HASH:
             raise Exception("Only hash maps are supported")
-
-    def __iter__(self):
         # for the first iter we pass 0
         self.last_key = (
             self.__map.key_type(0) if self.__map.key_type else ctypes.c_int(0)
         )
         self.first_iteration = True
+
+    def __iter__(self):
         return self
 
     def __next__(self):

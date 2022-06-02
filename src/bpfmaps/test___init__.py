@@ -170,3 +170,53 @@ def test_hash_map_iter(rand_name):
             entries,
         )
     )
+
+
+def test_structs_as_values(rand_name):
+    """Idea of this test is to verify that we can store and retrieve actual structs"""
+
+    class POINT(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long), ("z", ctypes.c_long)]
+
+    point = POINT(1, 2, 3)
+
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_HASH,
+        rand_name,
+        8,
+        ctypes.sizeof(POINT),
+        1,
+        0,
+        value_type=POINT,
+        key_type=ctypes.c_long,
+    )
+
+    mymap[0] = point
+    pointcopy = mymap[0]
+    assert pointcopy.x == 1 and pointcopy.y == 2 and pointcopy.z == 3
+    for e in mymap:
+        e = pointcopy
+        assert pointcopy.x == 1 and pointcopy.y == 2 and pointcopy.z == 3
+
+
+def test_structs_as_key(rand_name):
+    class POINT(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long), ("z", ctypes.c_long)]
+
+    point_key = POINT(1, 2, 3)
+    point_value = POINT(4, 5, 6)
+
+    mymap = BPF_Map(
+        MapTypes.BPF_MAP_TYPE_HASH,
+        rand_name,
+        ctypes.sizeof(POINT),
+        ctypes.sizeof(POINT),
+        1,
+        0,
+        value_type=POINT,
+        key_type=POINT,
+    )
+
+    mymap[point_key] = point_value
+    pointcopy = mymap[point_key]
+    assert pointcopy.x == 4 and pointcopy.y == 5 and pointcopy.z == 6
