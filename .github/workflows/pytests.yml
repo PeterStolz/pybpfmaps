@@ -17,8 +17,6 @@ jobs:
       id: cp3
       with:
         python-version: '3.10'
-    - name: test
-      run:  ${{ steps.cp3.outputs.python-path }} -c 'print("lel")'
     - name: test2
       run:  '${{ steps.cp3.outputs.python-path }}' -c 'print("lel")'
     - name: Install dependencies
