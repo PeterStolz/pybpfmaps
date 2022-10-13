@@ -1,4 +1,4 @@
 include pyproject.toml
-recursive-include src libbpf.so.0.8.0
+recursive-include src libbpf.so.0.8.1
 recursive-exclude src test_*.py
 
