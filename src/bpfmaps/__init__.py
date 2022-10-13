@@ -11,6 +11,7 @@ from importlib.resources import path
 
 with path("bpfmaps.libbpf", "libbpf.so.0.8.0") as libbpf_path:
     libbpf_so = ctypes.cdll.LoadLibrary(libbpf_path)
+    libbpf_so.libbpf_set_print(0)
 
 BPF_OBJ_NAME_LEN = 16
 
