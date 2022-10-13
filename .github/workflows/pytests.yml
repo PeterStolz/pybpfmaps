@@ -17,8 +17,7 @@ jobs:
       id: cp3
       with:
         python-version: '3.10'
-    - name: test2
-      run:  '${{ steps.cp3.outputs.python-path }}' -c 'print("lel")'
+    - run: echo '${{ steps.cp3.outputs }}'
     - name: Install dependencies
       run: |
         sudo apt-get update
