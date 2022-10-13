@@ -9,7 +9,7 @@ from enum import IntEnum
 # Load libbpf.so
 from importlib.resources import path
 
-with path("bpfmaps.libbpf", "libbpf.so.0.8.0") as libbpf_path:
+with path("bpfmaps.libbpf", "libbpf.so.0.8.1") as libbpf_path:
     libbpf_so = ctypes.cdll.LoadLibrary(libbpf_path)
 
 BPF_OBJ_NAME_LEN = 16
